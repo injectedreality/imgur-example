@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: imgur-app
+  labels:
+    app: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: imgur-app
+  template:
+    metadata:
+      labels:
+        app: imgur-app
+    spec:
+      containers:
+        - name: imgur-app
+          image: eu.gcr.io/pexipimgur-preview/imgur-app
+          ports:
+            - containerPort: 5000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: imgur-app-service
+spec:
+  selector:
+    app: imgur-app
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 5000
+  type: LoadBalancer
