@@ -1,4 +1,5 @@
 import hashlib
+import os
 from io import BytesIO
 
 import flask
@@ -24,6 +25,7 @@ Bonus D - any kind of optimization of your backend's backing store(detect identi
 app = flask.Flask(__name__)
 app.config["DEBUG"] = True
 app.config['BUCKET_NAME'] = 'pexip-demo-files'
+app.config['USE_EXTERNAL_STORAGE'] = False
 
 
 @app.route('/', methods=['GET'])
@@ -35,11 +37,20 @@ def documentation():
 def add_images():
     checksum = hashlib.md5(request.data).hexdigest()
     extension = request.headers.get('Content-Type').split('/')[1]
+    key_name = f'{checksum}/original.{extension}'
+    if app.config.get('USE_EXTERNAL_STORAGE'):
+        storage_client = storage.Client()
+        bucket = storage_client.get_bucket(app.config.get('BUCKET_NAME'))
+        blob = bucket.blob(key_name)
+        blob.upload_from_file(file_obj=BytesIO(request.data))
+    else:
+        try:
+            os.mkdir('files/'+checksum)
+        except:
+            pass
 
-    storage_client = storage.Client()
-    bucket = storage_client.get_bucket(app.config.get('BUCKET_NAME'))
-    blob = bucket.blob(f'{checksum}/original.{extension}')
-    blob.upload_from_file(file_obj=BytesIO(request.data))
+        fp = open('files/'+key_name, 'wb')
+        fp.write(request.data)
 
     return Response(f'{checksum}.{extension}')
 
@@ -47,14 +58,18 @@ def add_images():
 @app.route('/api/v1/images/<string:image_name>',  defaults={'size': 'original'}, methods=['GET'])
 @app.route('/api/v1/images/<string:size>/<image_name>')
 def get_image(image_name, size='original'):
-    storage_client = Client.from_service_account_json('./storage-credentials.json')
-    #storage_client = storage.Client()
-    bucket = storage_client.get_bucket(app.config.get('BUCKET_NAME'))
     checksum, extension = image_name.split('.')
-    blob = bucket.blob(f'{checksum}/original.{extension}')
-    file_obj = BytesIO()
-    blob.download_to_file(file_obj=file_obj)
-    file_obj.seek(0)
+    key_name=f'{checksum}/original.{extension}'
+
+    if app.config.get('USE_EXTERNAL_STORAGE'):
+        storage_client = Client.from_service_account_json('./storage-credentials.json')
+        bucket = storage_client.get_bucket(app.config.get('BUCKET_NAME'))
+        blob = bucket.blob(key_name)
+        file_obj = BytesIO()
+        blob.download_to_file(file_obj=file_obj)
+        file_obj.seek(0)
+    else:
+        file_obj = open('files/'+key_name)
 
     if size != 'original':
         im = Image.open(file_obj)
@@ -71,7 +86,6 @@ def get_image(image_name, size='original'):
         file_obj = BytesIO()
         im_resized.save(file_obj, 'jpeg')
         file_obj.seek(0)
-        print("Hello world")
 
     # original
 
