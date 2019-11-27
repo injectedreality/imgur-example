@@ -18,7 +18,7 @@ Run in kubernetes
 2. Set up kubernetes cluster (see google documentation) 
 3. Create a storage bucket named pexip-demo-files
 4. Create credentials that can access the bucket and copy it to the file storage-credentials.txt 
-5. Change the settings in app.py to use external storage **_app.config['USE_EXTERNAL_STORAGE'] = False_**
+5. Change the settings in app.py to use external storage **_app.config['USE_EXTERNAL_STORAGE'] = True_**
 5. Init gcloud and kubectl to use your created cluster
 6. Install skaffold (https://skaffold.dev/docs/install/)
 7. skaffold run --tail
